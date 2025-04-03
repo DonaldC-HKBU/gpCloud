@@ -1,8 +1,0 @@
-version: '3'
-services:
-  chatbot:
-    image: lab3-4-chatbot
-    environment:
-    - TELEGRAM_ACCESS_TOKEN=7852255651:AAGwAPAGhrrh9aLY6yrjwwuyDizTOX5-kU8
-    - GPT_ACCESS_TOKEN=1f63eb2a-dcc4-4da5-86e9-44db01909cd8
-    - REDIS_ACCESS_TOKEN=pDoDppzx5nsSXtSZx1m8ByOvNukyyAO7
