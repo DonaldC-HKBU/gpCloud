@@ -73,8 +73,10 @@ jobs:
           subscription-id: ${{ secrets.__subscriptionidsecretname__ }}
 
       - name: 'Deploy to Azure Web App'
-        uses: azure/webapps-deploy@v3
-        id: deploy-to-webapp
-        with:
-          app-name: 'cloudgp01'
-          slot-name: 'Production'
+        uses: Azure/static-web-apps-deploy@v1
+           with:
+             azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+             action: "upload"
+             app_location: "/"  # Assuming index.html is in the root
+             output_location: ""  # No build output since it's static content
+             api_location: ""  # No API directory since you are not using Azure Functions
