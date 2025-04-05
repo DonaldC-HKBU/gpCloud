@@ -14,7 +14,7 @@ def main():
     #config = configparser.ConfigParser()
     #config.read('config.ini')
     #updater = Updater(token=(config['TELEGRAM']['ACCESS_TOKEN']), use_context=True) - used for config.ini
-    updater = Updater(token=(os.environ['TELEGRAM_ACCESS_TOKEN']), use_context=True) #- used for fly.io
+    updater = Updater(token=(os.environ['TELEGRAM_ACCESS_TOKEN']), use_context=True) #- used for fly.io/Azure
     #used for docker below
     #updater = Updater(token=(os.getenv('TELEGRAM_ACCESS_TOKEN')), use_context=True)
 
