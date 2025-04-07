@@ -8,16 +8,14 @@ import os
 import requests
 #from dotenv import load_dotenv 
 #load_dotenv('token.env')
-## weather function library
+
+## weather function library ##
 from datetime import datetime, timedelta
 from collections import Counter
-## check stock price
-import subprocess
-import sys
-import importlib
-from futu import *
+## check stock price with the yFinance##
+import yfinance as yf
+import matplotlib.pyplot as plt
 
-global futu_trd_ctx
 
 def main():
     # Load your token and create an Updater for your Bot
@@ -55,9 +53,8 @@ def main():
     # check weather and forecast weather
     dispatcher.add_handler(CommandHandler("weather", weather))
     dispatcher.add_handler(CommandHandler("forecast", forecast))
-    # check stock price
-    dispatcher.add_handler(CommandHandler("quote", quote))
-    dispatcher.add_handler(CommandHandler("trade", trade))
+    # check stock price and the graph
+    dispatcher.add_handler(CommandHandler("stock", stock))
     # To start the bot:
     updater.start_polling()
     updater.idle()
@@ -107,6 +104,7 @@ def add(update: Update, context: CallbackContext) -> None:
     except (IndexError, ValueError):
         update.message.reply_text('Usage: /add <keyword>')
 
+# check weather
 def weather(update: Update, context: CallbackContext) -> None:
     """Fetch current weather for a city."""
     config = configparser.ConfigParser()
@@ -131,6 +129,7 @@ def weather(update: Update, context: CallbackContext) -> None:
     except Exception as e:
         update.message.reply_text(f"An error occurred: {str(e)}")
 
+# forecast weather
 def forecast(update: Update, context: CallbackContext) -> None:
     """Fetch 5-day weather forecast for a city."""
     config = configparser.ConfigParser()
@@ -175,56 +174,56 @@ def forecast(update: Update, context: CallbackContext) -> None:
     except Exception as e:
         update.message.reply_text(f"An error occurred: {str(e)}")
 
-def quote(update: Update, context: CallbackContext) -> None:
-    config = context.bot_data.get('config')
-    if not config:
-        update.message.reply_text("Error: Configuration not loaded.")
-        return
-    
+
+# check stock price and the graph
+def stock(update: Update, context: CallbackContext) -> None:
+    """Fetch stock data and plot a graph using yfinance."""
     try:
-        futu_host = config['FUTU']['HOST']
-        futu_port = int(config['FUTU']['PORT'])
+        stock_code = context.args[0] if context.args else "0700.HK"  # Default to Tencent
+        period = context.args[1] if len(context.args) > 1 else "1mo"  # Default to 1 month (e.g., "1d", "5d", "1mo", "1y")
         
-        quote_ctx = OpenQuoteContext(host=futu_host, port=futu_port)
+        # Fetch stock data
+        stock = yf.Ticker(stock_code)
+        info = stock.info  # Basic info
+        hist = stock.history(period=period)  # Historical data
         
-        stock_code = "HK.00700" if not context.args else f"HK.{context.args[0]}"
-        ret, data = quote_ctx.get_market_snapshot([stock_code])
+        if not info or 'longName' not in info or hist.empty:
+            update.message.reply_text(f"No data found for {stock_code}. Ensure the ticker is correct.")
+            return
         
-        if ret == 0:
-            last_price = data['last_price'][0]
-            update.message.reply_text(f"Latest price for {stock_code}: {last_price} HKD")
-        else:
-            update.message.reply_text(f"Error fetching quote: {data}")
+        stock_name = info['longName']
+        price = info['regularMarketPrice']  # Current price
+        currency = info['currency']
         
-        quote_ctx.close()
-    except KeyError:
-        update.message.reply_text("Error: FUTU section or keys missing in config.ini.")
+        # Send current price as text
+        update.message.reply_text(f"Stock: {stock_name} ({stock_code})\nPrice: {price} {currency}")
+        
+        # Plot the closing price
+        plt.figure(figsize=(10, 5))
+        plt.plot(hist.index, hist['Close'], label=f"{stock_name} Closing Price")
+        plt.title(f"{stock_name} ({stock_code}) - {period} Price History")
+        plt.xlabel("Date")
+        plt.ylabel(f"Price ({currency})")
+        plt.legend()
+        plt.grid(True)
+        
+        # Save the plot as an image
+        graph_file = f"{stock_code}_graph.png"
+        plt.savefig(graph_file)
+        plt.close()  # Close the figure to free memory
+        
+        # Send the graph image via Telegram
+        with open(graph_file, 'rb') as photo:
+            context.bot.send_photo(chat_id=update.effective_chat.id, photo=photo)
+        
+        # Optional: Clean up the file after sending
+        import os
+        os.remove(graph_file)
+        
+    except IndexError:
+        update.message.reply_text("Usage: /stock <stock_code> [period] (e.g., /stock 0700.HK 1mo)")
     except Exception as e:
         update.message.reply_text(f"An error occurred: {str(e)}")
-
-def trade(update: Update, context: CallbackContext) -> None:
-    """Place a simple trade using Futu API."""
-    try:
-        stock_code = context.args[0]  # e.g., "HK.00700"
-        qty = int(context.args[1])    # Quantity to trade
-        price = float(context.args[2])  # Limit price
-        
-        ret, data = futu_trd_ctx.place_order(
-            price=price,
-            qty=qty,
-            code=stock_code,
-            trd_side=TrdSide.BUY,  # Change to SELL if needed
-            order_type=OrderType.NORMAL,
-            trd_env=TrdEnv.REAL  # Use TrdEnv.SIMULATE for paper trading
-        )
-        
-        if ret == RET_OK:
-            update.message.reply_text(f"Order placed successfully: {data['order_id'][0]}")
-        else:
-            update.message.reply_text(f"Trade failed: {data}")
-    except (IndexError, ValueError):
-        update.message.reply_text("Usage: /trade <stock_code> <quantity> <price> (e.g., /trade HK.00700 100 500.0)")
-
 
 if __name__ == '__main__':
     main() 
