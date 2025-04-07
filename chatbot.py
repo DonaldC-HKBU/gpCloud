@@ -19,8 +19,8 @@ global futu_trd_ctx
 
 def main():
     # Load your token and create an Updater for your Bot
-    #config = configparser.ConfigParser()
-    #config.read('config.ini')
+    config = configparser.ConfigParser()
+    config.read('config.ini')
     #updater = Updater(token=(config['TELEGRAM']['ACCESS_TOKEN']), use_context=True) - used for config.ini
     updater = Updater(token=(os.environ['TELEGRAM_ACCESS_TOKEN']), use_context=True) #- used for fly.io/Azure
     #used for docker below
