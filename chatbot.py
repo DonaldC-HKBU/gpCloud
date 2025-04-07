@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, CallbackContext)
 from ChatGPT_HKBU import HKBU_ChatGPT 
-#import configparser
+import configparser
 import logging
 import redis
 import os
@@ -172,7 +172,7 @@ def forecast(update: Update, context: CallbackContext) -> None:
         update.message.reply_text("Usage: /forecast <city>")
     except Exception as e:
         update.message.reply_text(f"An error occurred: {str(e)}")
-        
+
 def quote(update: Update, context: CallbackContext) -> None:
     config = context.bot_data.get('config')
     if not config:
