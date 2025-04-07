@@ -19,27 +19,7 @@ from futu import *
 
 global futu_trd_ctx
 
-
-def install_package(package_name):
-    """Install a package using pip if it's not already installed."""
-    try:
-        # Try to import the package to check if it's installed
-        importlib.import_module(package_name)
-        print(f"{package_name} is already installed.")
-    except ImportError:
-        print(f"{package_name} not found. Installing...")
-        try:
-            # Run pip install command
-            subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
-            print(f"Successfully installed {package_name}.")
-        except subprocess.CalledProcessError as e:
-            print(f"Failed to install {package_name}: {e}")
-            sys.exit(1)  # Exit if installation fails
-
-
 def main():
-    install_package("requests")
-    install_package("futu-api")
     # Load your token and create an Updater for your Bot
     #config = configparser.ConfigParser()
     #config.read('config.ini')
