@@ -1,45 +1,39 @@
 from telegram import Update
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, CallbackContext)
 from ChatGPT_HKBU import HKBU_ChatGPT 
-import configparser
 import logging
 import redis
 import os
 import requests
-#from dotenv import load_dotenv 
-#load_dotenv('token.env')
+import time
 
 ## weather function library ##
 from datetime import datetime, timedelta
 from collections import Counter
 ## check stock price with the yFinance##
 import yfinance as yf
+<<<<<<< HEAD
 
+=======
+>>>>>>> 8e55542 (20250408 version K)
 
 
 def main():
-    # Load your token and create an Updater for your Bot
-    #config = configparser.ConfigParser()
-    #config.read('config.ini')
-    #updater = Updater(token=(config['TELEGRAM']['ACCESS_TOKEN']), use_context=True) - used for config.ini
     updater = Updater(token=(os.environ['TELEGRAM_ACCESS_TOKEN']), use_context=True) #- used for fly.io/Azure
-    #used for docker below
-    #updater = Updater(token=(os.getenv('TELEGRAM_ACCESS_TOKEN')), use_context=True)
-
     dispatcher = updater.dispatcher
-    global redis1
-    redis_host = "redis-12417.crce178.ap-east-1-1.ec2.redns.redis-cloud.com"
-    redis_port = 12417
-    redis_password = os.environ['REDIS_ACCESS_TOKEN'] 
-    #used for docker below
-    #redis_password = os.getenv('REDIS_ACCESS_TOKEN')
-    redis1 = redis.StrictRedis(host=redis_host, port=redis_port, password=redis_password)
-    # You can set this logging module, so you will know when
-    # and why things do not work as expected Meanwhile, update your config.ini as:
+    """Basic connection example."""
+
+    import redis
+    r = redis.Redis(
+        host='redis-12417.crce178.ap-east-1-1.ec2.redns.redis-cloud.com',
+        port=12417,
+        decode_responses=True,
+        username="default",
+        password = os.environ['REDIS_ACCESS_TOKEN'] 
+    )
+
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
     # register a dispatcher to handle message: here we register an echo dispatcher
-    #echo_handler = MessageHandler(Filters.text & (~Filters.command), echo)
-    #dispatcher.add_handler(echo_handler)
     # dispatcher for chatgpt
     global chatgpt
     chatgpt = HKBU_ChatGPT()
@@ -56,6 +50,7 @@ def main():
     updater.start_polling()
     updater.idle()
 
+<<<<<<< HEAD
 #def echo(update, context):
     #if update.message.text == 'What is your name?':
         #reply_message = 'I am DonaldC-Bot.'
@@ -75,7 +70,19 @@ def echo(update, context):
     logging.info("context:" + str(context))
     context.bot.send_message(chat_id = update.effective_chat.id, text=reply_message)
 
+=======
+def hello(update: Update, context: CallbackContext) -> None:
+    """Send a message when the command /hello is issued."""
+    msg = context.args[0]
+    update.message.reply_text('Good day,'+ msg +'!')
 
+# /help: provide the chatbot's available information
+def help_command(update: Update, context: CallbackContext) -> None:
+    """Send a message when the command /help is issued."""
+    update.message.reply_text('Welcome to the Chatbot created by Donald, Ken and Gary! \n You may use the function below for specific features embeded in this chatbot. By default, all answers will be answered by the ChatGPT if no special function is called. \n 1. /help: Display this help message. \n 2. /add <text> : Type your name and register in the database. \n 3. /weather <location> : Display the weather by location. The weather of Hong Kong will be shown if no location is specified. \n 4. forcast <location>: The weather forcast of Hong Kong will be shown if no location is specified. \n 5. /stock <stock code>: The information of related stock will be displayed. \n 6. /match & /profile : Try by yourself!')
+>>>>>>> 8e55542 (20250408 version K)
+
+# default function, chatgpt Chatbot assistance
 def equiped_chatgpt(update, context):
     global chatgpt
     reply_message = chatgpt.submit(update.message.text)
@@ -83,16 +90,30 @@ def equiped_chatgpt(update, context):
     logging.info("Context: " + str(context))
     context.bot.send_message(chat_id = update.effective_chat.id, text = reply_message)
 
+<<<<<<< HEAD
 
+=======
+# /add: add text to Redis database
+def add(update: Update, context: CallbackContext) -> None:
+    """Send a message when the command /add is issued."""
+    try:
+        global redis1
+        logging.info(context.args[0])
+        msg = context.args[0] # /add keyword <-- this should store the keyword
+        redis1.incr(msg) 
+            
+        update.message.reply_text('You have said ' + msg + ' for ' + redis1.get(msg) + ' times.')
+    except (IndexError, ValueError):
+        update.message.reply_text('Usage: /add <keyword>')
+
+# /weather: check weather
+openweather_password = os.environ['OPENWEATHER_ACCESS_TOKEN'] 
+>>>>>>> 8e55542 (20250408 version K)
 def weather(update: Update, context: CallbackContext) -> None:
     """Fetch current weather for a city."""
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-    api_key = config['OPENWEATHER']['API_KEY']
-    
     try:
         city = context.args[0] if context.args else "Hongkong"  # Default to Hongkong if no city provided
-        url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+        url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={openweather_password}&units=metric"
         response = requests.get(url).json()
         
         if response.get("cod") != 200:
@@ -108,15 +129,16 @@ def weather(update: Update, context: CallbackContext) -> None:
     except Exception as e:
         update.message.reply_text(f"An error occurred: {str(e)}")
 
+<<<<<<< HEAD
+=======
+# /forecast: forecast weather
+openweather_password = os.environ['OPENWEATHER_ACCESS_TOKEN']
+>>>>>>> 8e55542 (20250408 version K)
 def forecast(update: Update, context: CallbackContext) -> None:
     """Fetch 5-day weather forecast for a city."""
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-    api_key = config['OPENWEATHER']['API_KEY']
-    
     try:
         city = context.args[0] if context.args else "Hongkong"  # Default to Hongkong if no city provided
-        url = f"https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={api_key}&units=metric"
+        url = f"https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={openweather_password}&units=metric"
         response = requests.get(url).json()
         
         if response.get("cod") != "200":
@@ -152,6 +174,11 @@ def forecast(update: Update, context: CallbackContext) -> None:
     except Exception as e:
         update.message.reply_text(f"An error occurred: {str(e)}")
 
+<<<<<<< HEAD
+=======
+
+# /stock: check stock price and the graph
+>>>>>>> 8e55542 (20250408 version K)
 def stock(update: Update, context: CallbackContext) -> None:
     """Fetch real-time stock data for a ticker using yFinance."""
     try:
@@ -270,6 +297,10 @@ def match(update: Update, context: CallbackContext) -> None:
     except Exception as e:
         logging.error(f"Error in match: {e}")
         update.message.reply_text("Something went wrong. Try again!")
+<<<<<<< HEAD
+=======
+
+>>>>>>> 8e55542 (20250408 version K)
 
 if __name__ == '__main__':
     main()

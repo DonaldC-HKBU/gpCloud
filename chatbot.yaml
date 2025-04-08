@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: chatbot
-          image: cloudgpchatbot.azurecr.io/chatbot:latest2
+          image: cloudgpchatbot.azurecr.io/chatbot:latest
           ports:
             - containerPort: 80  # Change this to your application's port
           envFrom:  # Use envFrom to import all key-value pairs from the secret
