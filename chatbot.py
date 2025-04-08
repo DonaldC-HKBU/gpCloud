@@ -28,8 +28,8 @@ def main():
 
     dispatcher = updater.dispatcher
     global redis1
-    redis_host = "redis-18364.c1.asia-northeast1-1.gce.redns.redis-cloud.com"
-    redis_port = 18364
+    redis_host = "redis-12417.crce178.ap-east-1-1.ec2.redns.redis-cloud.com"
+    redis_port = 12417
     redis_password = os.environ['REDIS_ACCESS_TOKEN'] 
     #used for docker below
     #redis_password = os.getenv('REDIS_ACCESS_TOKEN')

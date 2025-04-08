@@ -14,17 +14,12 @@ spec:
     spec:
       containers:
         - name: chatbot
-          image: cloudgpchatbot.azurecr.io/chatbot:latest
+          image: cloudgpchatbot.azurecr.io/chatbot:latest2
           ports:
             - containerPort: 80  # Change this to your application's port
-          env:
-              # Define your environment variables here
-              - name: TELEGRAM_ACCESS_TOKEN
-                value: "7852255651:AAGwAPAGhrrh9aLY6yrjwwuyDizTOX5-kU8"
-              - name: GPT_ACCESS_TOKEN
-                value: "1f63eb2a-dcc4-4da5-86e9-44db01909cd8"
-              - name: REDIS_ACCESS_TOKEN
-                value: "pDoDppzx5nsSXtSZx1m8ByOvNukyyAO7"
+          envFrom:  # Use envFrom to import all key-value pairs from the secret
+            - secretRef:
+                name: chatbot-secrets
+                  # Define your environment variables here
       imagePullSecrets:
         - name: acr-secret
-         
