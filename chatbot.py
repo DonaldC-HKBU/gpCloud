@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from collections import Counter
 ## check stock price with the yFinance##
 import yfinance as yf
-import matplotlib.pyplot as plt
+
 
 
 def main():
@@ -46,15 +46,12 @@ def main():
     chatgpt_handler = MessageHandler(Filters.text & (~Filters.command),equiped_chatgpt)
     dispatcher.add_handler(chatgpt_handler)
     # on different commands - answer in Telegram
-    dispatcher.add_handler(CommandHandler("add",add))
-    dispatcher.add_handler(CommandHandler("help", help_command))
-    # answer when using /hello
-    dispatcher.add_handler(CommandHandler("hello", hello))
-    # check weather and forecast weather
     dispatcher.add_handler(CommandHandler("weather", weather))
     dispatcher.add_handler(CommandHandler("forecast", forecast))
-    # check stock price and the graph
     dispatcher.add_handler(CommandHandler("stock", stock))
+    dispatcher.add_handler(CommandHandler("profile", profile))
+    dispatcher.add_handler(CommandHandler("match", match))
+    dispatcher.add_handler(MessageHandler(Filters.text & (~Filters.command), equiped_chatgpt))
     # To start the bot:
     updater.start_polling()
     updater.idle()
@@ -71,40 +68,22 @@ def main():
 
 # Define a few command handlers. These usually take the two arguments update and
 # context. Error handlers also receive the raised TelegramError object in error.
-def hello(update: Update, context: CallbackContext) -> None:
-    """Send a message when the command /hello is issued."""
-    msg = context.args[0]
-    update.message.reply_text('Good day,'+ msg +'!')
 
-def help_command(update: Update, context: CallbackContext) -> None:
-    """Send a message when the command /help is issued."""
-    update.message.reply_text('Helping you helping you.')
+def echo(update, context):
+    reply_message = update.message.text.upper()
+    logging.info("Update:" +str(update))
+    logging.info("context:" + str(context))
+    context.bot.send_message(chat_id = update.effective_chat.id, text=reply_message)
+
 
 def equiped_chatgpt(update, context):
     global chatgpt
-    try:
-        reply_message = chatgpt.submit(update.message.text)
-        logging.info("Update: " + str(update))
-        logging.info("context: " + str(context))
-        context.bot.send_message(chat_id=update.effective_chat.id, text=reply_message)
-    except Exception as e:
-        logging.exception("Error while processing the message: ")
-        context.bot.send_message(chat_id=update.effective_chat.id, text="An error occurred. Please try again later.")
+    reply_message = chatgpt.submit(update.message.text)
+    logging.info("Update: "+ str(Update))
+    logging.info("Context: " + str(context))
+    context.bot.send_message(chat_id = update.effective_chat.id, text = reply_message)
 
 
-def add(update: Update, context: CallbackContext) -> None:
-    """Send a message when the command /add is issued."""
-    try:
-        global redis1
-        logging.info(context.args[0])
-        msg = context.args[0] # /add keyword <-- this should store the keyword
-        redis1.incr(msg) 
-            
-        update.message.reply_text('You have said ' + msg + ' for ' + redis1.get(msg) + ' times.')
-    except (IndexError, ValueError):
-        update.message.reply_text('Usage: /add <keyword>')
-
-# check weather
 def weather(update: Update, context: CallbackContext) -> None:
     """Fetch current weather for a city."""
     config = configparser.ConfigParser()
@@ -129,7 +108,6 @@ def weather(update: Update, context: CallbackContext) -> None:
     except Exception as e:
         update.message.reply_text(f"An error occurred: {str(e)}")
 
-# forecast weather
 def forecast(update: Update, context: CallbackContext) -> None:
     """Fetch 5-day weather forecast for a city."""
     config = configparser.ConfigParser()
@@ -174,56 +152,124 @@ def forecast(update: Update, context: CallbackContext) -> None:
     except Exception as e:
         update.message.reply_text(f"An error occurred: {str(e)}")
 
-
-# check stock price and the graph
 def stock(update: Update, context: CallbackContext) -> None:
-    """Fetch stock data and plot a graph using yfinance."""
+    """Fetch real-time stock data for a ticker using yFinance."""
     try:
-        stock_code = context.args[0] if context.args else "0700.HK"  # Default to Tencent
-        period = context.args[1] if len(context.args) > 1 else "1mo"  # Default to 1 month (e.g., "1d", "5d", "1mo", "1y")
+        # Default to "0700.HK" (Tencent) if no ticker provided
+        ticker_symbol = context.args[0] if context.args else "0700.HK"
         
-        # Fetch stock data
-        stock = yf.Ticker(stock_code)
-        info = stock.info  # Basic info
-        hist = stock.history(period=period)  # Historical data
+        # Create a Ticker object with yFinance
+        ticker = yf.Ticker(ticker_symbol)
         
-        if not info or 'longName' not in info or hist.empty:
-            update.message.reply_text(f"No data found for {stock_code}. Ensure the ticker is correct.")
+        # Fetch the latest data (e.g., last closing price)
+        stock_info = ticker.info
+        if not stock_info or 'currentPrice' not in stock_info:
+            update.message.reply_text(f"Error: Could not fetch data for {ticker_symbol}. Check the ticker symbol.")
             return
         
-        stock_name = info['longName']
-        price = info['regularMarketPrice']  # Current price
-        currency = info['currency']
+        # Extract relevant data
+        price = stock_info.get('currentPrice', stock_info.get('regularMarketPrice', 'N/A'))
+        company_name = stock_info.get('longName', ticker_symbol)
         
-        # Send current price as text
-        update.message.reply_text(f"Stock: {stock_name} ({stock_code})\nPrice: {price} {currency}")
-        
-        # Plot the closing price
-        plt.figure(figsize=(10, 5))
-        plt.plot(hist.index, hist['Close'], label=f"{stock_name} Closing Price")
-        plt.title(f"{stock_name} ({stock_code}) - {period} Price History")
-        plt.xlabel("Date")
-        plt.ylabel(f"Price ({currency})")
-        plt.legend()
-        plt.grid(True)
-        
-        # Save the plot as an image
-        graph_file = f"{stock_code}_graph.png"
-        plt.savefig(graph_file)
-        plt.close()  # Close the figure to free memory
-        
-        # Send the graph image via Telegram
-        with open(graph_file, 'rb') as photo:
-            context.bot.send_photo(chat_id=update.effective_chat.id, photo=photo)
-        
-        # Optional: Clean up the file after sending
-        import os
-        os.remove(graph_file)
-        
-    except IndexError:
-        update.message.reply_text("Usage: /stock <stock_code> [period] (e.g., /stock 0700.HK 1mo)")
+        # Send response
+        update.message.reply_text(f"Latest price for {ticker_symbol} ({company_name}): {price} {stock_info.get('currency', 'USD')}")
     except Exception as e:
-        update.message.reply_text(f"An error occurred: {str(e)}")
+        update.message.reply_text(f"An error occurred: {str(e)}. Usage: /stock <ticker> (e.g., /stock 0700.HK)")
+
+def profile(update: Update, context: CallbackContext) -> None:
+    """View or update profile: /profile [name interests]"""
+    try:
+        user_id = str(update.effective_user.id)
+        args = context.args
+
+        if not args:
+            user_data = redis1.get(user_id)
+            if not user_data:
+                update.message.reply_text("No profile found. Use /profile <name> <interests> to set one.")
+                return
+            name, interests = user_data.split(":", 1)
+            update.message.reply_text(f"Your Profile:\nName: {name}\nInterests: {interests}")
+            return
+
+        if len(args) < 2:
+            update.message.reply_text("Usage: /profile <name> <interest1, interest2, ...>")
+            return
+        
+        name = args[0]
+        interests = ",".join(args[1:]).lower()
+
+        for attempt in range(3):
+            try:
+                redis1.ping()
+                redis1.set(user_id, f"{name}:{interests}")
+                break
+            except redis.ConnectionError as e:
+                logging.error(f"Redis retry {attempt+1} in profile: {e}")
+                if attempt == 2:
+                    raise
+                time.sleep(1)
+
+        update.message.reply_text(f"Profile updated:\nName: {name}\nInterests: {interests}")
+    except redis.ConnectionError as e:
+        logging.error(f"Redis connection error: {e}")
+        update.message.reply_text("Cannot connect to the database. Try again later.")
+    except Exception as e:
+        logging.error(f"Error in profile: {e}")
+        update.message.reply_text("Something went wrong. Try again!")
+
+def match(update: Update, context: CallbackContext) -> None:
+    """Match with a specific user by name: /match <name>"""
+    try:
+        user_id = str(update.effective_user.id)
+        user_data = redis1.get(user_id)
+
+        if not user_data:
+            update.message.reply_text("No profile found. Use /profile <name> <interests> first.")
+            return
+
+        if not context.args:
+            update.message.reply_text("Usage: /match <name>")
+            return
+
+        target_name = context.args[0].lower()
+        caller_name, caller_interests = user_data.split(":", 1)
+        caller_interest_list = set(caller_interests.split(","))
+
+        # Search for the target user by name
+        all_users = redis1.keys("*")
+        match_found = False
+        for other_user_id in all_users:
+            other_data = redis1.get(other_user_id)
+            if other_data:
+                other_name, other_interests = other_data.split(":", 1)
+                if other_name.lower() == target_name:
+                    other_interest_list = set(other_interests.split(","))
+                    common_interests = caller_interest_list & other_interest_list
+                    if common_interests:
+                        update.message.reply_text(
+                            f"Match found with {other_name}:\n"
+                            f"Your Interests: {caller_interests}\n"
+                            f"{other_name}'s Interests: {other_interests}\n"
+                            f"Common Interests: {', '.join(common_interests)}"
+                        )
+                        match_found = True
+                    else:
+                        update.message.reply_text(
+                            f"No common interests with {other_name}.\n"
+                            f"Your Interests: {caller_interests}\n"
+                            f"{other_name}'s Interests: {other_interests}"
+                        )
+                        match_found = True
+                    break  # Stop searching once target is found
+
+        if not match_found:
+            update.message.reply_text(f"No user named '{target_name}' found.")
+    except redis.ConnectionError as e:
+        logging.error(f"Redis connection error: {e}")
+        update.message.reply_text("Cannot connect to the database. Try again later.")
+    except Exception as e:
+        logging.error(f"Error in match: {e}")
+        update.message.reply_text("Something went wrong. Try again!")
 
 if __name__ == '__main__':
-    main() 
+    main()
